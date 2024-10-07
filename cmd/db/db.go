@@ -2,9 +2,10 @@ package db
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
+	"github.com/c4miloarriagada/hexarq/cmd/internal/domain"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -17,7 +18,7 @@ var (
 const (
 	DBUser     = "admin"
 	DBPassword = "admin"
-	DBName     = "postgres"
+	DBName     = "go"
 	DBPort     = "5432"
 	DBHost     = "localhost"
 	TimeZone   = "Asia/Shanghai"
@@ -32,7 +33,7 @@ func GetDB() (*gorm.DB, error) {
 		dsn := fmt.Sprintf("user=%s password=%s dbname=%s port=%s host=%s sslmode=%s TimeZone=%s",
 			DBUser, DBPassword, DBName, DBPort, DBHost, SSLMode, TimeZone)
 
-		fmt.Println("Connecting to the database with DSN:", dsn)
+		log.Infof("Connecting to the database with DSN: %s", dsn)
 
 		db, err = gorm.Open(postgres.New(postgres.Config{
 			DSN:                  dsn,
@@ -40,9 +41,38 @@ func GetDB() (*gorm.DB, error) {
 		}), &gorm.Config{})
 
 		if err != nil {
-			log.Printf("Error trying to connect: %v\n", err)
+			log.Errorf("Error trying to connect: %v", err)
 		}
 	})
 
 	return db, err
+}
+
+func ConnectDb() {
+	db, err := GetDB()
+
+	if err != nil {
+		log.Fatalf("Error trying to connect: %v", err)
+	}
+
+	pg, err := db.DB()
+	if err != nil {
+		log.Fatalf("Error trying to get db connection: %v", err)
+	}
+
+	err = pg.Ping()
+	if err != nil {
+		log.Fatalf("Cannot establish ping to db: %v", err)
+	} else {
+		log.Info("Successfully connected to the database")
+	}
+}
+
+func CreateTables() {
+	err := db.AutoMigrate(&domain.User{})
+	if err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	log.Info("Table users created successfully!")
 }
